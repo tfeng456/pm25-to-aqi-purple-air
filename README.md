@@ -5,3 +5,5 @@ This script was created to be used in a data visualization dashboard and data ma
 
 This script was made to be used with the .csv files downloaded from [Purple Air's website](https://www.purpleair.com/sensorlist?) and works with the format of the .csv files as of 08-17-2020.
 
+https://tfeng456.github.io/pm25-to-aqi-purple-air/
+
