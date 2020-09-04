@@ -1,0 +1,164 @@
+---
+title: "PM2.5 to AQI Conversion for Purple Air Data"
+author: "Tiffany Feng"
+date: "8/17/2020"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+
+---
+# Introduction
+
+This script was created to be used in a data visualization dashboard and data management web tool by Data4Good. The tool was made for displaying and analyzing air pollution data in Los Angeles for Coalition for Clean Air (a clean air advocacy group).
+
+This script was made to be used with the .csv files downloaded from Purple Air's website. The specific data used in the examples below are the `30 minute average` primary data from the `West Mar Vista (outside)` sensor. The time range is from `08-01-2020 to 08-08-2020`.
+
+(Data can be downloaded here: https://www.purpleair.com/sensorlist?key=WGMJSO5N4HCAWSBO&show=56239)
+
+This script works with the .csv files from Purple Air as of 08-17-2020.
+
+# PM2.5 to AQI script (2 Versions)
+
+The following packages must be installed using `install.packages("package_name")` if they have not already.
+
+```{r, message=FALSE}
+# packages to make script work: necessary for both scripts.
+
+library(dplyr)
+library(lubridate)
+library(stringr)
+library(con2aqi)
+```
+
+
+```{r}
+# packages for formatting of this document.
+library(DT)
+```
+
+## How to Use
+
+To use these scripts:
+
+1. Download R at https://www.r-project.org/. Once you have it downloaded, install the required packages (see beginning of document).
+
+2. Copy and paste the relevant code for the script you are using into the console. Set your working directory to the folder containing your sensor data by going to Misc -> Change Working Directory.
+
+3. If using script 1, use the function and save the output by typing: `output <- pm_to_aqi_filename("filename.csv")`
+
+4. If using script 2, use the function by first reading in the data and saving it to a variable: `sensor_data_raw <- read.csv("filename.csv", header = TRUE)`. Then, use the function and save the output by typing: `output <- pm_to_aqi_all(sensor_data_raw)`
+
+5. To save your output into a .csv, use the function: `write.csv(output, "name_of_choice.csv")`. This will produce a .csv file in your working directory.
+
+## 1. Using Purple Air File Name
+
+Assumes file name is in the format of the Primary files downloaded from Purple Air.
+
+### Script 1
+
+<details>
+  <summary>Reveal Code</summary>
+
+```{r}
+
+pm_to_aqi_filename <- function(filename) {
+  
+  read_csv_filename <- function(filename){
+    ret <- read.csv(filename, header = TRUE)
+    ret$Source <- filename
+    ret
+  }
+  
+  # sensor_data_raw must be read using read_csv_filename
+  sensor_data_raw <- read_csv_filename(filename)
+  
+  # save sensor lat/long
+  sensor_data_raw$sensor_coords <- sensor_data_raw$Source %>% 
+    str_extract("\\((-?\\d+(\\.\\d+)?)\\s*(-?\\d+(\\.\\d+)?)\\)")
+  
+  # save sensor name
+  sensor_data_raw$sensor_name <- sensor_data_raw$Source %>% 
+    str_extract("(?:(?!\\s\\((-?\\d+(\\.\\d+)?)\\s*(-?\\d+(\\.\\d+)?)\\)).)*")
+  
+  # subset data so that only relevant columns remain
+  sensor_data_subset <- sensor_data_raw %>% 
+    select(created_at, PM2.5_ATM_ug.m3, sensor_name, sensor_coords)
+  
+  # convert date info into appropriate format
+  sensor_data_subset$created_at <- ymd_hms(sensor_data_subset$created_at)
+  
+
+  sensor_data_subset <- sensor_data_subset %>%
+    mutate(date = as.Date(created_at, format = "%y/%m/%d")) %>%   # create column of just date without the time - "date"
+    group_by(date, sensor_name, sensor_coords) %>% # group by day while retaining sensor info
+    summarize(mean_pm25 = mean(PM2.5_ATM_ug.m3)) %>% # take daily mean
+    mutate(aqi_num = con2aqi(pollutant ="pm25", con = mean_pm25)) # convert mean pm25 into aqi
+  
+  # write.csv(sensor_data_subset, "data_output.csv")
+  sensor_data_subset
+  
+}
+```
+
+</details>
+
+### Demonstration of Script 1
+
+The function will read in the Primary raw sensor data downloaded from Purple Air and output a table with the necessary information. Assuming the file name is the same as when it was downloaded, it will save sensor coordinates and sensor name.
+
+Note: The input must be the name of the file, which can be quite lengthy as seen below.
+
+```{r}
+result1 <- pm_to_aqi_filename("West Mar Vista (outside) (34.008267 -118.439274) Primary 30_minute_average 08_01_2020 08_08_2020.csv")
+
+datatable(result1)
+```
+
+## 2. When File Name is Changed
+
+In the case when the file name is changed or does not contain sensor information, this script will output daily AQI numbers. It does not record the sensor name and sensor lat/long.
+
+### Script 2
+
+<details>
+  <summary>Reveal Code</summary>
+
+```{r}
+
+pm_to_aqi_all <- function(sensor_data_raw) {
+  
+  # subset data so that only relevant columns remain
+  sensor_data_subset <- sensor_data_raw %>% 
+    select(created_at, PM2.5_ATM_ug.m3)
+  
+  # convert date info into appropriate format
+  sensor_data_subset$created_at <- ymd_hms(sensor_data_subset$created_at)
+  
+  sensor_data_subset <- sensor_data_subset %>%
+    mutate(date = as.Date(created_at, format = "%y/%m/%d")) %>%   # create column of just date without the time - "date"
+    group_by(date) %>% # group by day while retaining sensor info
+    summarize(mean_pm25 = mean(PM2.5_ATM_ug.m3)) %>% # take daily mean
+    mutate(aqi_num = con2aqi(pollutant ="pm25", con = mean_pm25)) # convert mean pm25 into aqi
+  
+  return(sensor_data_subset)
+}
+
+```
+
+</details>
+
+### Demonstration of Script 2
+
+The function will read in the raw sensor data and output a table with daily PM2.5 and AQI values, as well as the corresponding date.
+
+```{r}
+# testing data used: West Mar Vista sensor, channel A, 30 min avg, over a week from Aug 1st to Aug 8th
+sensor_data_raw <- read.csv("West Mar Vista (outside) (34.008267 -118.439274) Primary 30_minute_average 08_01_2020 08_08_2020.csv", header = TRUE)
+
+result2 <- pm_to_aqi_all(sensor_data_raw)
+
+datatable(result2)
+```
+
+
