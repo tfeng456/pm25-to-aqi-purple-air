@@ -9,6 +9,7 @@ During the project, I was able to:
 * Design and build a prototype for a data management and data visualization web tool for air sensor data for the Coalition for Clean Air.
 * Work with an interdisciplinary team and learn about all aspects of product development and the design thinking process.
 * Develop R scripts for the tool that would convert Particulate Matter concentration into an Air Quality Index value, taking into account how such values should be calculated and handled.
+* [Created concept sketches for the tool.](https://drive.google.com/file/d/1UWmN96hS4u0FWjbFIE7sjhZqPEKg7onM/view?usp=sharing)
 
 This script was made to be used with the .csv files downloaded from [Purple Air's website](https://www.purpleair.com/sensorlist?) and works with the format of the .csv files as of 08-17-2020.
 
